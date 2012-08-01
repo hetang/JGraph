@@ -8,8 +8,11 @@ function JGraph (pData, pCanvas, options){
 		return new JGraph();
 	}
 	
+	// are these private vars?
 	this.graphData = pData || null;
 	this.canvasObj = null;
+	
+	// can you write comments to explain what you did?
 	
 	if(arguments.length === 1) {
 		this.graphData = options['data'] || null;
