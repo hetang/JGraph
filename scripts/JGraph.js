@@ -2,23 +2,28 @@
 // Trying to create a general purpose graphing class 
 // July 26, 2012
 
-function JGraph (pData, pCanvas, options){
+function JGraph (pData, pCanvas, colors, label, optionsVal){
 
 	if(!(this instanceof JGraph)) {
 		return new JGraph();
-	}
+	};
 	
 	// are these private vars?
 	this.graphData = pData || null;
 	this.canvasObj = null;
+	this.computedPoints = [];
+	this.colors = colors || [];
+	this.label = label || [];
 	
 	// can you write comments to explain what you did?
 	
 	if(arguments.length === 1) {
-		this.graphData = options['data'] || null;
-		pCanvas = options['canvas'];
-	}
-	
+		this.graphData = pData['data'] || null;
+		pCanvas = pData['canvas'];
+		this.colors = pData['colors'] || [];
+		this.label = pData['label'] || [];
+	};
+
 	if (pCanvas instanceof HTMLElement){
 		this.canvasObj = pCanvas;
 	} else if (typeof pCanvas == 'string') {
@@ -30,18 +35,23 @@ function JGraph (pData, pCanvas, options){
 //end the class definition
 
 //sums up the elements in an array
-JGraph.prototype.sum = function(arr) {
+JGraph.prototype.sum = function(arr,i) {	
 	var sum = 0;
-	for(var i=0; i<arr.length; i++) {
-		sum+= arr[i];
-	}
-	return sum;
+	if(!i) {
+		i = arr.length;
+	};
+    for (var j = 0; j < i; j++) {
+      sum += arr[j];
+    };
+    return sum;
 };
 
 // draws a pie chart when you supply an array and a canvas id
 JGraph.prototype.pie =  function(pData, pCanvas){
-	var canvasObj = this.canvasObj;
-	var graphData = pData || this.graphData;
+	var canvasObj = this.canvasObj,
+		graphData = pData || this.graphData;
+
+	this.computedPoints = []
 	
 	if(pCanvas) {
 		if (pCanvas instanceof HTMLElement){
@@ -49,50 +59,93 @@ JGraph.prototype.pie =  function(pData, pCanvas){
 		} else if (typeof pCanvas == 'string') {
 			canvasObj = document.getElementById(pCanvas);
 		};
-	}	
+	};	
 	
 	if(!canvasObj) {
 		throw {
 			name: 'JGraph Error',
 			message: 'No Canvas Object defined'			
 		};
-	}
+	};
 	
 	if(!graphData) {
 		throw {
 			name: 'JGraph Error',
 			message: 'No Graph points given'			
 		};
-	}
+	};
+	
 	var totaldatapoints = this.sum(graphData);
 	 
 	// loop through data points array and calculate percentages.
-	for (var i=0; i < graphData.length; i++) {
-		percentages[i] = Math.ceil((graphData[i]/totaldatapoints) *100); // percentages
-		angles[i] = Math.ceil((graphData[i]/totaldatapoints) *360);  //angles
-		console.log(angles[i]);
+	for (var i=0; i<graphData.length; i++) {
+		var computedPoint = Math.ceil((graphData[i] * 360) / totaldatapoints);
+		this.computedPoints[i] = computedPoint;
 	};
 	
-	// find the fucking canvas element
-	context = canvasObj.getContext("2d");
+	if (canvasObj.getContext) {
+		// find the fucking canvas element 
+		context = canvasObj.getContext("2d");
+
+		for (var i = 0; i < graphData.length; i++) {
+			this.drawSegment(canvasObj, context, graphData, i);
+		};
+	};
+};
+
+JGraph.prototype.degreesToRadians = function (degrees) {
+    return (degrees * Math.PI)/180;
+}
+
+JGraph.prototype.drawSegment = function (canvas, context, graphData, i) {
+    context.save();
+    var centerX = Math.floor(canvas.width / 2);
+    var centerY = Math.floor(canvas.height / 2);
+    var radius = (centerX > centerY)? centerY : centerX;
+
+    var startingAngle = this.degreesToRadians(this.sum(this.computedPoints, i));
+    var arcSize = this.degreesToRadians(this.computedPoints[i]);
+    var endingAngle = startingAngle + arcSize;
+
+    context.beginPath();
+    context.moveTo(centerX, centerY);
+    context.arc(centerX, centerY, radius, 
+                startingAngle, endingAngle, false);
+	context.lineTo(centerX,centerY);
+    context.closePath();
 	
-	// co-ordinates (where should they be initialized ?) 
-	var x = canvas.width / 2,
-	  y = canvas.height / 2,
-	  //startAngle = 0,
-	  //endAngle = 0,
-	  radius = 100, // this should be customizable.
-	  counterclockwise = true;
-	
-	/*	loop through the angles array and draw arcs, bitch.
-    	also show the edges of the pie slices ?
-		draw a line back to the arc */
-	for(var j=1; j<=angles.length;j++){
-		context.beginPath(); 
-		context.arc(x,y,radius,angles[j-1], angles[0], counterclockwise);
-		context.lineTo(x,y);
-		//context.fillText(percentages[i]);
-		context.stroke();  
-    };
-	context.closePath();
-};	
+	if(this.colors[i]) {
+	    context.fillStyle = this.colors[i];
+	} else {
+		context.fillStyle = '#'+(0x1000000+(Math.random())*0xffffff).toString(16).substr(1,6);
+	};
+    context.fill();
+
+    context.restore();
+
+    this.drawSegmentLabel(canvas, context, graphData, i);
+}
+
+JGraph.prototype.drawSegmentLabel = function (canvas, context, graphData, i) {
+	context.save();
+	var x = Math.floor(canvas.width / 2);
+	var y = Math.floor(canvas.height / 2);
+	var angle = this.degreesToRadians(this.sum(this.computedPoints, i));
+
+	context.translate(x, y);
+	context.rotate(angle);
+	var dx = Math.floor(canvas.width * 0.5) - 10;
+	var dy = Math.floor(canvas.height * 0.05);
+
+	context.textAlign = "right";
+	var fontSize = Math.floor(canvas.height / 25);
+	context.font = fontSize + "pt Helvetica";
+
+	if(this.label[i]){
+		context.fillText(this.label[i], dx, dy);
+	} else {
+		context.fillText(graphData[i], dx, dy);
+	}
+
+   context.restore();
+}

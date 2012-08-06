@@ -1,0 +1,19 @@
+<html>
+ <head>
+  <title> Test JGraph </title>  
+	<script type='text/javascript' src="../scripts/JGraph.js"></script>	
+ </head>
+
+ <body>
+	<canvas id="pieChart" width="200" height="200">Canvas not supported</canvas>
+	<script>
+		var g = new JGraph({
+				data : [20,34,30],
+				canvas: "pieChart",
+				colors : ["#FFDAB9", "#E6E6FA", "#E0FFFF"],
+				label: ['Part-A', 'Part-B', 'Part-C']
+			}); 
+		g.pie();
+	</script>
+ </body>
+</html>
